@@ -164,15 +164,16 @@ input = S.fromList
   ]
 
 
+
+-- TODO:: turn this into a fold!
 run :: Machine -> Machine
-run p@(ip, prog) = case prog `S.index` ip of
-  1  -> run (ip + 4, S.update (prog `S.index` (ip + 3)) (arith (+)) prog)
-  2  -> run (ip + 4, S.update (prog `S.index` (ip + 3)) (arith (*)) prog)
+run p@(ip, prog) = case get ip of
+  1  -> run (ip + 4, S.update (get (ip + 3)) (arith (+)) prog)
+  2  -> run (ip + 4, S.update (get (ip + 3)) (arith (*)) prog)
   99 -> p
  where
-  arith op =
-    (prog `S.index` (prog `S.index` (ip + 1)))
-      `op` (prog `S.index` (prog `S.index` (ip + 2)))
+  get = S.index prog
+  arith op = get (get (ip + 1)) `op` get (get (ip + 2))
 
 execute :: Int -> Int -> Memory -> Int
 execute noun verb mem = snd (run (0, mem'')) `S.index` 0
