@@ -35,10 +35,11 @@ part2 orbits =
 main :: IO ()
 main = do
   input <- readFile "input.txt"
+  let orbits = parse input
   putStr "Part 1: "
-  print $ part1 (parse input)
+  print $ part1 orbits
   putStr "Part 2: "
-  print $ part2 (parse input)
+  print $ part2 orbits
 
 
 eg1 :: String
