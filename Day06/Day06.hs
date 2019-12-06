@@ -4,21 +4,24 @@ import           Data.List                      ( intersect )
 import           Data.List.Split                ( splitOn )
 import           Data.Maybe                     ( fromJust )
 
-parse :: String -> [(String, String)]
+type Planet = String
+type Orbits = [(Planet, Planet)]
+
+parse :: String -> Orbits
 parse = map (trans . splitOn ")") . lines
   where trans [parent, child] = (child, parent)
 
 
 -- NB: Omits COM, so gives the result gives the number of orbits
-parents :: [(String, String)] -> String -> [String]
+parents :: Orbits -> Planet -> [Planet]
 parents orbits planet = case lookup planet orbits of
   Nothing     -> []
   Just parent -> planet : parents orbits parent
 
-part1 :: [(String, String)] -> Int
+part1 :: Orbits -> Int
 part1 orbits = sum [ length (parents orbits planet) | (planet, _) <- orbits ]
 
-part2 :: [(String, String)] -> Int
+part2 :: Orbits -> Int
 part2 orbits = length youparents + length sanparents - 2 * length commonparents
  where
   you           = fromJust $ lookup "YOU" orbits
