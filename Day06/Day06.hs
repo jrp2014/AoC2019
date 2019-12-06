@@ -13,24 +13,23 @@ parse = map (trans . splitOn ")") . lines
 
 
 -- NB: Omits COM, so gives the result gives the number of orbits
-antecedents :: Orbits -> Planet -> [Planet]
-antecedents orbits planet = case lookup planet orbits of
+ancestors :: Orbits -> Planet -> [Planet]
+ancestors orbits planet = case lookup planet orbits of
   Nothing     -> []
-  Just parent -> planet : antecedents orbits parent
+  Just parent -> planet : ancestors orbits parent
 
 part1 :: Orbits -> Int
-part1 orbits =
-  sum [ length (antecedents orbits planet) | (planet, _) <- orbits ]
+part1 orbits = sum [ length (ancestors orbits planet) | (planet, _) <- orbits ]
 
 part2 :: Orbits -> Int
 part2 orbits =
-  length youantecedents + length sanantecedents - 2 * length commonantecedents
+  length youancestors + length sanancestors - 2 * length commonancestors
  where
-  you               = fromJust $ lookup "YOU" orbits
-  san               = fromJust $ lookup "SAN" orbits
-  youantecedents    = antecedents orbits you
-  sanantecedents    = antecedents orbits san
-  commonantecedents = youantecedents `intersect` sanantecedents
+  you             = fromJust $ lookup "YOU" orbits
+  san             = fromJust $ lookup "SAN" orbits
+  youancestors    = ancestors orbits you
+  sanancestors    = ancestors orbits san
+  commonancestors = youancestors `intersect` sanancestors
 
 
 main :: IO ()
