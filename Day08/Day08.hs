@@ -11,21 +11,22 @@ mkLayers :: [a] -> Int -> Int -> [[a]]
 mkLayers txt width height = chunksOf (width * height) txt
 
 count :: Eq a => a -> [a] -> Int
-count x = length . filter (x ==)
+count x = foldr (\y -> (+) (if x == y then 1 else 0)) 0
 
 fewestZeros :: [[Char]] -> [Char]
 fewestZeros = minimumBy (comparing $ count '0')
 
--- find top visible poxel
+-- find top visible pixel
 renderPixel :: [Char] -> Char
-renderPixel ('2' : rest) = renderPixel rest
-renderPixel (c   : _   ) = c
+renderPixel = head . dropWhile (== '2')
 
-render :: [Char] -> String
-render ('0' : cs) = '.' : render cs -- black
-render ('1' : cs) = '*' : render cs -- white
-render ('2' : cs) = ' ' : render cs -- transparent
-render []         = []
+render :: [Char] -> [Char]
+render = map render'
+ where
+  render' c = case c of
+    '0' -> '.'
+    '1' -> '*'
+    '2' -> ' '
 
 main :: IO ()
 main = do
