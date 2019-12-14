@@ -2,6 +2,7 @@ module IntCode where
 
 import           Data.Bool                      ( bool )
 import qualified Data.Sequence                 as S
+import Debug.Trace
 
 type Memory = S.Seq Int
 
@@ -33,6 +34,7 @@ run m@(Machine counter mem inp outp relB) = case opcode of
 
   -- input
   3 ->
+    trace (show $ head inp) $
     run m { pc = counter + 2, memory = setP 1 (head inp) mem, input = tail inp }
   
   -- output
