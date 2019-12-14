@@ -28,25 +28,54 @@ solvePt2 sw = play initialGameState (repeat 0)
 
 
 play :: GameState -> [Int] -> Int
-play gs inputs = play' gs inputs outputs
+play gs inputs =  play' gs inputs outputs
  where
   outputs = execute (memory $ machine gs) inputs
 
   play' :: GameState -> [Int] -> [Int] -> Int
   play' gs' inputs' outputs' = case outputs' of
-    [] -> play gs' inputs''
+    --[] -> play gs' inputs''
     (-1 : 0 : sc : rest) ->
-      trace ("score=" ++ show sc) $ play' (gs' { score = sc }) inputs'' rest
+      trace ("score=" ++ show sc) $ play (gs' { score = sc }) inputs''
     (x : _ : tile : rest) -> case toEnum tile of
-      Ball   -> play' (gs' { ballX = Just x }) inputs'' rest
       Paddle -> play' (gs' { paddleX = Just x }) inputs'' rest
+      Ball   -> play' (gs' { ballX = Just x }) inputs'' rest
       _      -> play' gs' inputs'' rest
-    where inputs'' = repeat $ joystickAI (paddleX gs') (ballX gs')
+    where inputs'' = repeat $ joystickAI (ballX gs') (paddleX gs')
+
+
+runGame :: [Int] -> Int
+runGame mem = let
+    output = run (initialize mem) input
+
+    -- keep track of the paddle position, ball position, score; possibly move the paddle
+    gameAI :: ((Int, Int, Int), Maybe Int) -> [Maybe Int] -> ((Int, Int, Int), Maybe Int)
+    gameAI ((ballx, padx, score), _) [Nothing,   Nothing,      Nothing] = ((ballx, padx,    score), Just . signum $ ballx - padx)
+    gameAI ((ballx, padx,     _), _) [Just (-1), Just 0, Just newScore] = ((ballx, padx, newScore), Nothing)
+    gameAI ((ballx,    _, score), _) [Just x,    Just y,        Just 3] = ((ballx,    x,    score), Nothing)
+    gameAI ((    _, padx, score), _) [Just x,    Just y,        Just 4] = ((    x, padx,    score), Nothing)
+    gameAI (               state, _)                                  _ = (                  state, Nothing)
+
+    (gameState, input') = unzip . scanl gameAI ((0, 0, 0), Nothing) . chunksOf 3 . padNothings $ output
+    input = map fromJust . filter isJust $ input'
+
+    -- helper function; turns one Nothing into three Nothings so the chunks of input are always aligned
+    padNothings :: [Maybe a] -> [Maybe a]
+    padNothings []           = []
+    padNothings (Nothing:xs) = [Nothing, Nothing, Nothing] ++ (padNothings xs)
+    padNothings (x:xs)       = x:(padNothings xs)
+  in
+    (\(_, _, score) -> score) . last $ gameState
+
+
+
 
 joystickAI :: Maybe Int -> Maybe Int -> Int
-joystickAI px bx = case (px, bx) of
-  (Just px, Just bx) -> signum $ bx - px
-  (_      , _      ) -> 0
+joystickAI ballx paddlex = case (ballx, paddlex) of
+  (Just bx, Just px)
+     | bx < px -> -1
+     | bx > px -> 1
+  _ -> 0
 
 main :: IO ()
 main = do
