@@ -24,7 +24,7 @@ mkMachine inp mem = Machine { pc      = 0
 
 --
 run :: Machine -> Machine
-run m@(Machine counter mem inp outp relB) = case opcode of
+run m@(Machine counter mem inp outp relB) = case  opcode of
   -- (+)
   1 -> run m { pc = counter + 4, memory = setP 3 (getP 1 + getP 2) mem }
 
@@ -32,8 +32,12 @@ run m@(Machine counter mem inp outp relB) = case opcode of
   2 -> run m { pc = counter + 4, memory = setP 3 (getP 1 * getP 2) mem }
 
   -- input
-  3 ->
-    run m { pc = counter + 2, memory = setP 1 (head inp) mem, input = tail inp }
+  3 -> case inp of
+    []        -> error ("No input at pc = " ++ show counter)
+    otherwise -> run m { pc     = counter + 2
+                       , memory = setP 1 (head inp) mem
+                       , input  = tail inp
+                       }
   -- output
   4 -> run m { pc = counter + 2, output = outp ++ [getP 1] }
 
@@ -44,12 +48,14 @@ run m@(Machine counter mem inp outp relB) = case opcode of
   6 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 /= 0) }
 
   -- less than
-  7 ->
-    run m { pc = counter + 4, memory = setP 3 (bool 0 1 (getP 1 < getP 2)) mem }
+  7 -> run m { pc     = counter + 4
+             , memory = setP 3 (bool 0 1 (getP 1 < getP 2)) mem
+             }
 
   -- equals
-  8 ->
-    run m { pc = counter + 4, memory = setP 3 (bool 0 1 (getP 1 == getP 2)) mem }
+  8 -> run m { pc     = counter + 4
+             , memory = setP 3 (bool 0 1 (getP 1 == getP 2)) mem
+             }
 
   -- adjust relative base
   9  -> run m { pc = counter + 2, relBase = relB + getP 1 }
@@ -70,7 +76,11 @@ run m@(Machine counter mem inp outp relB) = case opcode of
     1 -> error "Cannot set directly"
     2 -> S.update (relB + param position) value memry
     p ->
-      error $ "Invalid setP parameter mode " ++ show p ++ " at pc " ++ show counter
+      error
+        $  "Invalid setP parameter mode "
+        ++ show p
+        ++ " at pc "
+        ++ show counter
 
   -- The value of the ith parameter, where the 0th parameter is the opcode
   param :: Int -> Int
@@ -84,7 +94,11 @@ run m@(Machine counter mem inp outp relB) = case opcode of
     1 -> param position -- direct
     2 -> get (relB + param position) -- relative
     p ->
-      error $ "Invalid getP parameter mode " ++ show p ++ " at pc " ++ show counter
+      error
+        $  "Invalid getP parameter mode "
+        ++ show p
+        ++ " at pc "
+        ++ show counter
 
   -- the mode of the positionth parameter
   -- 0 = indirect / position mode
