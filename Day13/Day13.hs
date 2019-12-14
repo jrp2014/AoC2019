@@ -23,20 +23,20 @@ data GameState = GameState {score :: Int, ballX :: Maybe Int, paddleX :: Maybe I
 
 solvePt2 :: Memory -> Int
 solvePt2 sw = play initialGameState [0]
-  where initialGameState = GameState 0 Nothing Nothing (mkMachine [0] sw)
+  where initialGameState = GameState 0 Nothing Nothing (mkMachine [] sw)
 
 
 
 play :: GameState -> [Int] -> Int
 play gs inputs =
   let outputs =  execute (memory $ machine gs) inputs
-  in case trace (show outputs) $ outputs of
+  in case outputs of
   []                  -> score gs
-  (-1 : 0 : sc   : _) -> play (gs { score = sc }) []
+  (-1 : 0 : sc   : _) -> trace (show sc) $ play (gs { score = sc }) []
   (x  : _ : tile : _) -> case toEnum tile of
     Ball   -> play (gs { ballX = Just x }) [joystickAI (paddleX gs) (Just x)]
     Paddle -> play (gs { paddleX = Just x }) [joystickAI (Just x) (ballX gs)]
-    _      -> play gs [0]
+    _      -> play gs []
 
 joystickAI :: Maybe Int -> Maybe Int -> Int
 joystickAI px bx = case (px, bx) of
