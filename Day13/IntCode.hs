@@ -2,7 +2,8 @@ module IntCode where
 
 import           Data.Bool                      ( bool )
 import qualified Data.Sequence                 as S
-import Debug.Trace
+
+import           Debug.Trace
 
 type Memory = S.Seq Int
 
@@ -11,7 +12,6 @@ data Machine
       { pc :: Int, -- program counter
         memory :: Memory,
         input :: [Int],
-        output :: [Int],
         relBase :: Int
       }
 
@@ -19,13 +19,12 @@ mkMachine :: [Int] -> Memory -> Machine
 mkMachine inp mem = Machine { pc      = 0
                             , memory  = mem S.>< S.replicate 4096 0
                             , input   = inp
-                            , output  = []
                             , relBase = 0
                             }
 
 --
-run :: Machine -> Machine
-run m@(Machine counter mem inp outp relB) = case opcode of
+run :: Machine -> [Int]
+run m@(Machine counter mem inp relB) = case opcode of
   -- (+)
   1 -> run m { pc = counter + 4, memory = setP 3 (getP 1 + getP 2) mem }
 
@@ -33,12 +32,12 @@ run m@(Machine counter mem inp outp relB) = case opcode of
   2 -> run m { pc = counter + 4, memory = setP 3 (getP 1 * getP 2) mem }
 
   -- input
-  3 ->
-    trace (show $ head inp) $
+  3 -> -- trace ("in=" ++ show (head inp)) $
     run m { pc = counter + 2, memory = setP 1 (head inp) mem, input = tail inp }
-  
+
   -- output
-  4 -> run m { pc = counter + 2, output = outp ++ [getP 1] }
+  4 -> -- trace ("out=" ++ show (getP 1)) $
+    getP 1 : run m { pc = counter + 2 }
 
   -- Jump if true
   5 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 == 0) }
@@ -59,7 +58,7 @@ run m@(Machine counter mem inp outp relB) = case opcode of
   9  -> run m { pc = counter + 2, relBase = relB + getP 1 }
 
   -- halt
-  99 -> m
+  99 -> []
 
   o  -> error ("Invalid opcode " ++ show o ++ " at " ++ show counter)
  where
@@ -68,7 +67,7 @@ run m@(Machine counter mem inp outp relB) = case opcode of
 
   -- set, lazily
   setP :: Int -> Int -> Memory -> Memory
-  --setP position value memry = value `seq` S.update (param position) value memry
+  -- setP position value memry = value `seq` S.update (param position) value memry
   setP position value memry = case mode position of
     0 -> S.update (param position) value memry
     1 -> error "Cannot set directly"
@@ -110,6 +109,6 @@ run m@(Machine counter mem inp outp relB) = case opcode of
     digit pos n = n `div` (10 ^ pos) `mod` 10
 
 execute :: Memory -> [Int] -> [Int]
-execute mem inputs = output . run $ mkMachine inputs mem
+execute mem inputs = run $ mkMachine inputs mem
 
 
