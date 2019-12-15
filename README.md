@@ -1,6 +1,5 @@
 # AoC2019
-Advent of Code 2019
-
+## Advent of Code 2019
 
 Borrowing ideas from (in no particular order):
 

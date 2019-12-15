@@ -3,8 +3,6 @@ module IntCode where
 import           Data.Bool                      ( bool )
 import qualified Data.Sequence                 as S
 
-import           Debug.Trace
-
 type Memory = S.Seq Int
 
 data Machine
@@ -22,7 +20,6 @@ mkMachine inp mem = Machine { pc      = 0
                             , relBase = 0
                             }
 
---
 run :: Machine -> [Int]
 run m@(Machine counter mem inp relB) = case opcode of
   -- (+)
@@ -32,11 +29,12 @@ run m@(Machine counter mem inp relB) = case opcode of
   2 -> run m { pc = counter + 4, memory = setP 3 (getP 1 * getP 2) mem }
 
   -- input
-  3 -> -- trace ("in=" ++ show (head inp)) $
+  3 ->
     run m { pc = counter + 2, memory = setP 1 (head inp) mem, input = tail inp }
 
   -- output
-  4 -> -- trace ("out=" ++ show (getP 1)) $
+  4 -> -- produces output in reverse order, which seems to give the right
+       -- laziness characteristics for Day 13
     getP 1 : run m { pc = counter + 2 }
 
   -- Jump if true
