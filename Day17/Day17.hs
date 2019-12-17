@@ -3,9 +3,7 @@ module Day17 where
 
 import qualified Data.Sequence                 as S
 import qualified Data.Map                      as M
-import           Data.Char                      ( chr
-                                                , ord
-                                                )
+import           Data.Char                      ( chr )
 import           IntCode
 import           Test.Hspec
 
@@ -31,13 +29,13 @@ at = M.findWithDefault '.'
 
 
 parse :: String -> Memory
-parse input = S.fromList . read $ '[' : input ++ "]"
+parse inp = S.fromList . read $ '[' : inp ++ "]"
 
 
 toGrid :: String -> Grid
-toGrid input = M.fromList
+toGrid inp = M.fromList
   [ ((y, x), column)
-  | (y, row   ) <- zip [0 ..] (lines input)
+  | (y, row   ) <- zip [0 ..] (lines inp)
   , (x, column) <- zip [0 ..] row
   ]
 
@@ -55,12 +53,12 @@ solvePt1' grid = sum
 
 main :: IO ()
 main = do
-  input <- readFile "input.txt"
-  let pinput   = parse input
-  let scaffold = map chr (execute pinput [])
-  putStr scaffold
+  inp <- readFile "input.txt"
+  let pinp = parse inp
+  let grid   = map chr (execute pinp [])
+  putStr grid
   putStr "Part 1: "
-  print $ solvePt1 scaffold
+  print $ solvePt1 grid
 
 
 eg1 :: String
