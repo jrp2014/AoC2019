@@ -42,7 +42,7 @@ iterationN n f = (!! max 0 n) . iterate' f
 
 
 solvePt1 :: [Int] -> String
-solvePt1 = take 8 . display . iterationN 100 fft
+solvePt1 = display . take 8 . iterationN 100 fft
 
 solvePt2 :: String -> String
 solvePt2 input =
@@ -50,7 +50,7 @@ solvePt2 input =
     . take 8
     . iterationN 100 comp
     . drop offset
-    . repString 10000
+    . repList 10000
     . parse
     $ input
  where
@@ -61,8 +61,8 @@ solvePt2 input =
 
 -- A more efficient list replication concat.replicate n implementation for large n?
 -- BY RHIND PAPYRUS 'EGYPTIAN' OR 'ETHIOPIAN' MULTIPLICATION ------------------
-repString :: Int -> [a] -> [a]
-repString n s =
+repList :: Int -> [a] -> [a]
+repList n s =
   foldr
       (\(d, x) a -> if d > 0 -- Is this power of 2 needed for the binary recomposition ?
         then mappend a x
