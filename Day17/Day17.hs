@@ -6,10 +6,6 @@ import qualified Data.Map                      as M
 import           Data.Char                      ( chr
                                                 , ord
                                                 )
-import           Data.List                      ( sortOn
-                                                , tails
-                                                , inits
-                                                )
 
 import           IntCode
 import           Test.Hspec
@@ -87,8 +83,8 @@ path grid location direction
     n          = length steps
     segmentEnd = last steps
 
-part2 :: [Int]
-part2 =
+input2 :: [Int]
+input2 =
   map ord
     . unlines
     $ [ "B,B,C,A,C,A,C,A,C,B"
@@ -102,17 +98,17 @@ part2 =
 main :: IO ()
 main = do
   inp <- readFile "input.txt"
-  let pinp       = parse inp
-  let gridString = fmap chr (execute pinp [])
+  let prog       = parse inp
+  let gridString = map chr (execute prog [])
   let grid       = toGrid gridString
   putStr gridString
   putStr "Part 1: "
   print $ solvePt1 grid
   putStr "Part 2: "
-  let ppath = path grid (start grid) (-1, 0)
+  -- let ppath = path grid (start grid) (-1, 0)
   -- print ppath
-  let pinp2 = Seq.update 0 2 pinp
-  print .last $ execute pinp2 part2
+  let prog2 = Seq.update 0 2 prog
+  print . last $ execute prog2 input2
 
 eg1 :: String
 eg1 =
