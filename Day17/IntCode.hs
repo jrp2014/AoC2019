@@ -29,13 +29,17 @@ run m@(Machine counter mem inp relB) = case opcode of
   2 -> run m { pc = counter + 4, memory = setP 3 (getP 1 * getP 2) mem }
 
   -- input
-  3 ->
-    run m { pc = counter + 2, memory = setP 1 (head inp) mem, input = tail inp }
+  3 -> if null inp
+    then []
+    else run m { pc     = counter + 2
+               , memory = setP 1 (head inp) mem
+               , input  = tail inp
+               }
 
   -- output
   4 -> -- produces output in reverse order, which seems to give the right
        -- laziness characteristics for Day 13
-     getP 1 : run m { pc = counter + 2 }
+    getP 1 : run m { pc = counter + 2 }
 
   -- Jump if true
   5 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 == 0) }
