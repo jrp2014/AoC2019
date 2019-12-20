@@ -2,7 +2,6 @@ module Day11 where
 
 import           Data.Map                      as M
 import           Data.Sequence                 as S
-import Data.List (transpose)
 import           IntCode
 
 parse :: String -> Memory
