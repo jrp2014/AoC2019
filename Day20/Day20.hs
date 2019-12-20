@@ -1,4 +1,4 @@
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns, BlockArguments#-}
 module Day20 where
 
 import           Data.Char                      ( isUpper )
@@ -41,7 +41,17 @@ invertMap m = Map.fromListWith (++) tuples
 neighbours :: (Num a) => (a, a) -> [(a, a)]
 neighbours (x, y) = [(x - 1, y), (x, y - 1), (x, y + 1), (x + 1, y)]
 
-solvePt1 input = (start, end, next start)
+
+-- | Find output destinations for each warp tile.
+findLinks ::
+  Map.Map String [Coord] {- ^ labeled tiles -} ->
+  Map.Map Coord Coord    {- ^ warp links    -}
+findLinks xs =
+  Map.fromList
+    do [p1,p2] <- Map.elems xs
+       [(p1,p2), (p2,p1)]
+
+solvePt1 input = (start, end, next start, findLinks portalCoords)
  where
 
   (maze, portals) = parse input
