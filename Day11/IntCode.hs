@@ -39,7 +39,7 @@ run m@(Machine counter mem inp relB) = case opcode of
   -- output
   4 -> -- produces output in reverse order, which seems to give the right
        -- laziness characteristics for Day 13
-    getP 1 : run m { pc = counter + 2 }
+     getP 1 : run m { pc = counter + 2 }
 
   -- Jump if true
   5 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 == 0) }
