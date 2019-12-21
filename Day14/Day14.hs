@@ -1,25 +1,21 @@
 module Day14 where
 
-import           Data.List                      ( foldl' )
+import           Data.List                      ( foldl'
+                                                , sortOn
+                                                )
 import qualified Data.Map.Strict               as M
 import qualified Data.Set                      as S
 import           Test.Hspec
 import           Text.Parsec
 import           Text.Parsec.String
 
-
-
-data Reagent = Reagent { _quantity :: Int, _chemical :: String } deriving (Ord, Eq, Show)
-data Reaction = Reaction {_lhs :: S.Set Reagent, _rhs :: Reagent} deriving (Eq, Show)
-
+data Reagent = Reagent {quantity :: Int, chemical :: String} deriving (Ord, Eq, Show)
+data Reaction = Reaction {ingredients :: S.Set Reagent, result :: Reagent} deriving (Eq, Show)
 type Reactions = M.Map String Reaction
 type Requirement = M.Map String Int
 
-
 parseReactions :: String -> Reactions
-parseReactions s = case parse recipeP "" s of
-  Left  err       -> error $ show err
-  Right reactions -> reactions
+parseReactions s = either (error . show) id $ parse recipeP "" s
 
 recipeP :: Parser Reactions
 recipeP = do
@@ -28,23 +24,20 @@ recipeP = do
 
 reactionP :: Parser Reaction
 reactionP = do
-  ings <- ingredientP `sepBy` (char ',')
+  ings <- ingredientP `sepBy` char ','
   spaces
-  _   <- string "=>"
-  rhs <- ingredientP
-  return $ Reaction (S.fromList ings) rhs
+  _ <- string "=>"
+  Reaction (S.fromList ings) <$> ingredientP
 
 ingredientP :: Parser Reagent
 ingredientP = do
   q <- quantityP
-  r <- chemicalP
-  return $ Reagent q r
+  Reagent q <$> chemicalP
 
 chemicalP :: Parser String
 chemicalP = do
   spaces
-  c  <- many1 upper
-  return c
+  many1 upper
 
 quantityP :: Parser Int
 quantityP = do
@@ -56,8 +49,7 @@ mkReactions :: [Reaction] -> Reactions
 mkReactions = foldl' addReaction M.empty
  where
   addReaction base reaction =
-    M.insert (_chemical $ _rhs reaction) reaction base
-
+    M.insert (chemical $ result reaction) reaction base
 
 --
 
@@ -68,11 +60,12 @@ produce reactions required | M.null needToProduce = required
   needToProduce = M.filter (> 0) $ nonOre required
   (chem, qty)   = M.findMin needToProduce
   reaction      = reactions M.! chem
-  productQty    = _quantity $ _rhs reaction
+  productQty    = quantity $ result reaction
   applications  = max 1 (qty `div` productQty)
   qty'          = qty - (applications * productQty)
   required'     = M.insert chem qty' required
-  required'' = S.foldl (addRequirement applications) required' (_lhs reaction)
+  required'' =
+    S.foldl (addRequirement applications) required' (ingredients reaction)
 
 nonOre :: Requirement -> Requirement
 nonOre = M.filterWithKey (\c _ -> c /= "ORE")
@@ -80,9 +73,9 @@ nonOre = M.filterWithKey (\c _ -> c /= "ORE")
 addRequirement :: Int -> Requirement -> Reagent -> Requirement
 addRequirement n requirements reagent = M.insert chem qty' requirements
  where
-  chem = _chemical reagent
+  chem = chemical reagent
   qty  = M.findWithDefault 0 chem requirements
-  qty' = qty + (n * _quantity reagent)
+  qty' = qty + (n * quantity reagent)
 
 oreForFuel :: Reactions -> Int -> Int
 oreForFuel reactions fuel = required M.! "ORE"
@@ -91,14 +84,13 @@ oreForFuel reactions fuel = required M.! "ORE"
   required  = produce reactions required0
 
 solvePt1 :: String -> Int
-solvePt1 input = oreForFuel (parseReactions input)  1
+solvePt1 input = oreForFuel (parseReactions input) 1
 
-main :: IO()
+main :: IO ()
 main = do
   input <- readFile "input.txt"
   putStr "Part 1: "
   print $ solvePt1 input
-
 
 test :: IO ()
 test = hspec $ do
@@ -113,7 +105,6 @@ test = hspec $ do
       solvePt1 eg4 `shouldBe` 180697
     it "Example 5" $ do
       solvePt1 eg5 `shouldBe` 2210736
-
 
 eg1 :: String
 eg1 =
@@ -180,4 +171,3 @@ eg5 =
   \121 ORE => 7 VRPVC\n\
   \7 XCVML => 6 RJRHP\n\
   \5 BHXH, 4 VRPVC => 5 LTCX"
- 
