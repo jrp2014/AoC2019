@@ -26,12 +26,12 @@ type Reactions = M.Map String Reaction
 
 type Recipe = [Reaction]
 
-type Requirement = M.Map String Int
+type Requirements = M.Map String Int -- how much of a chemical is needed
 
 -- TODO:: quite a lot of boilerplate and utility code here.  Make better use of topologically
 -- sorted ingredints
 
--- Topological sort of reactions in recipe (superfluous?)
+-- Topological sort of reactions in recipe (superfluous)
 orderReactions :: Recipe -> [Reaction]
 orderReactions reactions = decode <$> sortedReactions
  where
@@ -43,6 +43,24 @@ orderReactions reactions = decode <$> sortedReactions
   decode vertex = r where (r, _, _) = decoder vertex
 
 --
+
+-- an alternative representation not used below)
+doit :: M.Map String (Int, Requirements) -> Int -> Int
+doit rules = expand . M.singleton "FUEL" where
+  expand :: Requirements -> Int
+  expand queue
+    | Just (ele, n) <- M.lookupMin $ M.filterWithKey needed queue
+    , Just (m, srcs) <- M.lookup ele rules
+    , x <- (n + m - 1) `div` m
+    = expand $ M.unionWith (+) queue $ M.insert ele (negate $ m * x) $ fmap
+      (x *)
+      srcs
+    | otherwise
+    = M.findWithDefault 0 "ORE" queue
+
+  needed :: String -> Int -> Bool
+  needed "ORE" _ = False
+  needed _     n = n > 0
 
 parseReactions :: String -> Recipe
 parseReactions s = either (error . show) id $ parse recipeP "" s
@@ -83,7 +101,7 @@ mkReactions = foldl' addReaction M.empty
 
 --
 
-produce :: Reactions -> Requirement -> Requirement
+produce :: Reactions -> Requirements -> Requirements
 produce reactions required | M.null needToProduce = required
                            | otherwise            = produce reactions required''
  where
@@ -95,13 +113,13 @@ produce reactions required | M.null needToProduce = required
   qty'          = qty - (applications * productQty)
   required'     = M.insert chem qty' required
   required'' =
-    S.foldl (addRequirement applications) required' (ingredients reaction)
+    S.foldl (addRequirements applications) required' (ingredients reaction)
 
-nonOre :: Requirement -> Requirement
+nonOre :: Requirements -> Requirements
 nonOre = M.filterWithKey (\c _ -> c /= "ORE")
 
-addRequirement :: Int -> Requirement -> Reagent -> Requirement
-addRequirement n requirements reagent = M.insert chem qty' requirements
+addRequirements :: Int -> Requirements -> Reagent -> Requirements
+addRequirements n requirements reagent = M.insert chem qty' requirements
  where
   chem = chemical reagent
   qty  = M.findWithDefault 0 chem requirements
@@ -136,6 +154,10 @@ searchFuel reactions lower upper
 
 solvePt1 :: String -> Int
 solvePt1 input =
+  oreForFuel (mkReactions {- . orderReactions -}
+                          $ parseReactions input) 1
+solvePt1' :: String -> Int
+solvePt1' input =
   oreForFuel (mkReactions {- . orderReactions -}
                           $ parseReactions input) 1
 
