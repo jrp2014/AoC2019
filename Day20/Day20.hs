@@ -9,8 +9,12 @@ import           Data.List                      ( elemIndices
 import qualified Data.Map                      as Map
 import           Data.Maybe                     ( catMaybes
                                                 , maybeToList
+                                                , fromJust
                                                 )
 import qualified Data.Set                      as Set
+
+import           Algorithm.Search
+
 
 type Coord = (Int, Int)
 type Maze = Set.Set Coord -- passage points
@@ -41,17 +45,8 @@ invertMap m = Map.fromListWith (++) tuples
 neighbours :: (Num a) => (a, a) -> [(a, a)]
 neighbours (x, y) = [(x - 1, y), (x, y - 1), (x, y + 1), (x + 1, y)]
 
-
--- | Find output destinations for each warp tile.
-findLinks ::
-  Map.Map String [Coord] {- ^ labeled tiles -} ->
-  Map.Map Coord Coord    {- ^ warp links    -}
-findLinks xs =
-  Map.fromList
-    do [p1,p2] <- Map.elems xs
-       [(p1,p2), (p2,p1)]
-
-solvePt1 input = (start, end, next start, findLinks portalCoords)
+solvePt1 :: String -> Int
+solvePt1 input = length . fromJust $ bfs next (== end) start
  where
 
   (maze, portals) = parse input
@@ -69,6 +64,11 @@ solvePt1 input = (start, end, next start, findLinks portalCoords)
     portal <- maybeToList $ portals Map.!? p -- where adjacent poortals take you
     filter (/= p) $ portalCoords Map.! portal
 
+main :: IO ()
+main = do
+  inp <- readFile "input.txt"
+  putStr "Part 1: "
+  print $ solvePt1 inp
 
 eg1 :: String
 eg1 =
@@ -92,4 +92,43 @@ eg1 =
   \             Z       \n\
   \             Z       "
 
+eg2 :: String
+eg2 =
+    "                   A               \n\
+    \                   A               \n\
+    \  #################.#############  \n\
+    \  #.#...#...................#.#.#  \n\
+    \  #.#.#.###.###.###.#########.#.#  \n\
+    \  #.#.#.......#...#.....#.#.#...#  \n\
+    \  #.#########.###.#####.#.#.###.#  \n\
+    \  #.............#.#.....#.......#  \n\
+    \  ###.###########.###.#####.#.#.#  \n\
+    \  #.....#        A   C    #.#.#.#  \n\
+    \  #######        S   P    #####.#  \n\
+    \  #.#...#                 #......VT\n\
+    \  #.#.#.#                 #.#####  \n\
+    \  #...#.#               YN....#.#  \n\
+    \  #.###.#                 #####.#  \n\
+    \DI....#.#                 #.....#  \n\
+    \  #####.#                 #.###.#  \n\
+    \ZZ......#               QG....#..AS\n\
+    \  ###.###                 #######  \n\
+    \JO..#.#.#                 #.....#  \n\
+    \  #.#.#.#                 ###.#.#  \n\
+    \  #...#..DI             BU....#..LF\n\
+    \  #####.#                 #.#####  \n\
+    \YN......#               VT..#....QG\n\
+    \  #.###.#                 #.###.#  \n\
+    \  #.#...#                 #.....#  \n\
+    \  ###.###    J L     J    #.#.###  \n\
+    \  #.....#    O F     P    #.#...#  \n\
+    \  #.###.#####.#.#####.#####.###.#  \n\
+    \  #...#.#.#...#.....#.....#.#...#  \n\
+    \  #.#####.###.###.#.#.#########.#  \n\
+    \  #...#.#.....#...#.#.#.#.....#.#  \n\
+    \  #.###.#####.###.###.#.#.#######  \n\
+    \  #.#.........#...#.............#  \n\
+    \  #########.###.###.#############  \n\
+    \           B   J   C               \n\
+    \           U   P   P               "
 
