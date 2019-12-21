@@ -1,26 +1,44 @@
 module Day14 where
 
-import           Data.List                      ( foldl'
-                                                , sortOn
-                                                )
+import           Data.List                      ( foldl' )
 import qualified Data.Map.Strict               as M
 import qualified Data.Set                      as S
 import           Test.Hspec
 import           Text.Parsec
 import           Text.Parsec.String
 
+import           Data.Graph                    as G
+
 data Reagent = Reagent {quantity :: Int, chemical :: String} deriving (Ord, Eq, Show)
 data Reaction = Reaction {ingredients :: S.Set Reagent, result :: Reagent} deriving (Eq, Show)
 type Reactions = M.Map String Reaction
+type Recipe = [Reaction]
 type Requirement = M.Map String Int
 
-parseReactions :: String -> Reactions
+
+
+orderReactions :: Recipe -> [Reaction]
+orderReactions reactions = decode <$> sortedReactions where
+
+  reactions' =
+    [ (reaction, res, S.toList ing) | reaction@(Reaction ing res) <- reactions ]
+
+  (graph, decoder, _) = G.graphFromEdges reactions'
+
+  sortedReactions :: [Vertex]
+  sortedReactions = topSort graph -- the topological sort work is done here!
+
+  decode vertex = r where (r, _, _) = decoder vertex
+
+--
+
+parseReactions :: String -> Recipe
 parseReactions s = either (error . show) id $ parse recipeP "" s
 
-recipeP :: Parser Reactions
+recipeP :: Parser Recipe
 recipeP = do
   rs <- reactionP `sepEndBy1` endOfLine
-  return $ mkReactions rs
+  return rs
 
 reactionP :: Parser Reaction
 reactionP = do
@@ -45,7 +63,7 @@ quantityP = do
   digits <- many1 digit
   return $ read digits
 
-mkReactions :: [Reaction] -> Reactions
+mkReactions :: Recipe -> Reactions
 mkReactions = foldl' addReaction M.empty
  where
   addReaction base reaction =
@@ -84,13 +102,17 @@ oreForFuel reactions fuel = required M.! "ORE"
   required  = produce reactions required0
 
 solvePt1 :: String -> Int
-solvePt1 input = oreForFuel (parseReactions input) 1
+solvePt1 input =
+  oreForFuel (mkReactions . orderReactions $ parseReactions input) 1
 
 main :: IO ()
 main = do
   input <- readFile "input.txt"
   putStr "Part 1: "
   print $ solvePt1 input
+
+  print $ orderReactions (parseReactions eg1)
+
 
 test :: IO ()
 test = hspec $ do
