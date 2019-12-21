@@ -1,33 +1,45 @@
 module Day14 where
 
+import           Data.Graph                    as G
 import           Data.List                      ( foldl' )
 import qualified Data.Map.Strict               as M
 import qualified Data.Set                      as S
 import           Test.Hspec
-import           Text.Parsec
+import           Text.Parsec                    ( char
+                                                , digit
+                                                , endOfLine
+                                                , many1
+                                                , parse
+                                                , sepBy
+                                                , sepEndBy1
+                                                , spaces
+                                                , string
+                                                , upper
+                                                )
 import           Text.Parsec.String
 
-import           Data.Graph                    as G
-
 data Reagent = Reagent {quantity :: Int, chemical :: String} deriving (Ord, Eq, Show)
+
 data Reaction = Reaction {ingredients :: S.Set Reagent, result :: Reagent} deriving (Eq, Show)
+
 type Reactions = M.Map String Reaction
+
 type Recipe = [Reaction]
+
 type Requirement = M.Map String Int
 
+-- TODO:: quite a lot of boilerplate and utility code here.  Make better use of topologically
+-- sorted ingredints
 
-
+-- Topological sort of reactions in recipe (superfluous?)
 orderReactions :: Recipe -> [Reaction]
-orderReactions reactions = decode <$> sortedReactions where
-
+orderReactions reactions = decode <$> sortedReactions
+ where
   reactions' =
     [ (reaction, res, S.toList ing) | reaction@(Reaction ing res) <- reactions ]
-
   (graph, decoder, _) = G.graphFromEdges reactions'
-
   sortedReactions :: [Vertex]
   sortedReactions = topSort graph -- the topological sort work is done here!
-
   decode vertex = r where (r, _, _) = decoder vertex
 
 --
@@ -101,18 +113,50 @@ oreForFuel reactions fuel = required M.! "ORE"
   required0 = M.singleton "FUEL" fuel
   required  = produce reactions required0
 
+oreLimit :: Int
+oreLimit = 10 ^ 12
+
+findUpper :: Reactions -> Int -> Int
+-- findUpper _ n | trace ("Upper " ++ show n) False = undefined
+findUpper reactions n = if ore > oreLimit
+  then n
+  else findUpper reactions (n * 2)
+  where ore = oreForFuel reactions n
+
+searchFuel :: Reactions -> Int -> Int -> Int
+-- searchFuel _ lower upper | trace ("Search " ++ show lower ++ " - " ++ show upper) False = undefined
+searchFuel reactions lower upper
+  | upper == lower = upper
+  | otherwise = if ore > oreLimit
+    then searchFuel reactions lower (mid - 1)
+    else searchFuel reactions mid upper
+ where
+  mid = (upper + lower + 1) `div` 2
+  ore = oreForFuel reactions mid
+
 solvePt1 :: String -> Int
 solvePt1 input =
-  oreForFuel (mkReactions . orderReactions $ parseReactions input) 1
+  oreForFuel (mkReactions {- . orderReactions -}
+                          $ parseReactions input) 1
+
+--  oreForFuel (mkReactions  . orderReactions  $ parseReactions input) 1
+
+solvePt2 :: String -> Int
+solvePt2 input = searchFuel reactions (upper `div` 2) upper
+ where
+  upper     = findUpper reactions (oreLimit `div` base)
+  base      = oreForFuel reactions 1
+  reactions = mkReactions $ parseReactions input
 
 main :: IO ()
 main = do
   input <- readFile "input.txt"
   putStr "Part 1: "
   print $ solvePt1 input
+  putStr "Part 2: "
+  print $ solvePt2 input
 
-  print $ orderReactions (parseReactions eg1)
-
+--  print $ orderReactions (parseReactions eg1)
 
 test :: IO ()
 test = hspec $ do
@@ -127,6 +171,13 @@ test = hspec $ do
       solvePt1 eg4 `shouldBe` 180697
     it "Example 5" $ do
       solvePt1 eg5 `shouldBe` 2210736
+  describe "Part 2" $ do
+    it "Example 1" $ do
+      solvePt2 eg3 `shouldBe` 82892753
+    it "Example 2" $ do
+      solvePt2 eg4 `shouldBe` 5586022
+    it "Example 3" $ do
+      solvePt2 eg5 `shouldBe` 460664
 
 eg1 :: String
 eg1 =
