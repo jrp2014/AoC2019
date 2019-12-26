@@ -3,12 +3,13 @@
 {-# LANGUAGE TupleSections #-}
 module Day24 where
 
-import qualified Data.Map                      as M
 import           Data.Set                       ( Set )
 import qualified Data.Set                      as S
 
 
-import           Control.Arrow                  (  first, second )
+import           Control.Arrow                  ( first
+                                                , second
+                                                )
 
 
 type Coords = (Int, Int)
@@ -22,65 +23,68 @@ down = second succ
 
 type Tile = (Int, Coords)
 
-type Grid = Set Tile
+type Tiles = Set Tile
+
 
 size :: Int
 size = 5
+
+centre :: Coords
+centre = (size `div` 2, size `div` 2)
+
+inside :: Coords -> Bool -- in bounds?
+inside (x, y) = x >= 0 && x < size && y >= 0 && y < size
 
 flatten :: [[a]] -> [((Int, Int), a)]
 flatten rows =
   [ ((x, y), a) | (y, row) <- zip [0 ..] rows, (x, a) <- zip [0 ..] row ]
 
-firstDuplicate :: Ord a => [a] -> a
+firstDuplicate :: (Ord a, Show a) => [a] -> a
 firstDuplicate = go S.empty where
   go seen (x : xs) | x `S.member` seen = x
                    | otherwise         = go (S.insert x seen) xs
+  go seen [] = error $ "Cannot find any duplicates. Seen: " ++ show seen
 
-centre :: Coords
-centre = (size `div` 2, size `div` 2)
 
-inBounds :: Coords -> Bool
-inBounds (x, y) = x >= 0 && x < size && y >= 0 && y < size
+neighbours :: Tile -> Tiles
+neighbours (l, p) = S.fromList
+  [ (l, p') | move <- [left, right, up, down], let p' = move p, inside p' ]
 
-neighbours :: Tile -> [Tile]
-neighbours (l, p) =
-  [ (l, p') | d <- [left, right, up, down], let p' = d p, inBounds p' ]
-
-recursiveNeighbours :: Tile -> [Tile]
-recursiveNeighbours (l, p) = do
-  (d, border) <-
+recursiveNeighbours :: Tile -> Tiles
+recursiveNeighbours (l, p) = S.fromList $ do
+  (move, border) <-
     [(left, (pred size, )), (up, (, pred size)), (right, (0, )), (down, (, 0))]
-  let p' = d p
+  let p' = move p
   if
     | p' == centre -> [ (succ l, border i) | i <- [0 .. pred size] ]
-    | inBounds p'  -> [(l, p')]
-    | otherwise    -> [(pred l, d centre)]
+    | inside p'    -> [(l, p')]
+    | otherwise    -> [(pred l, move centre)]
 
-applyRule :: (Tile -> [Tile]) -> Grid -> Grid
-applyRule adjacents bugs =
-  keysWhere (== 1) ( n `M.restrictKeys` bugs)
-    `S.union` keysWhere (`elem` [1, 2]) ( n `M.withoutKeys` bugs)
+
+applyRule :: (Tile -> Tiles) -> Tiles -> Tiles
+applyRule adjacents tiles = S.filter rule $ S.unions (S.map adjacents tiles)
  where
-  n = M.fromListWith (+) [ (p, 1) | p <- foldMap adjacents bugs ]
-  keysWhere p = M.keysSet . M.filter p
+  rule k = 1 == n || 2 == n && S.notMember k tiles
+    where n = S.size $ adjacents k `S.intersection` tiles
 
-step :: (Tile -> [Tile]) -> Grid -> [Grid]
-step = iterate . applyRule
+steps :: (Tile -> Tiles) -> Tiles -> [Tiles]
+steps = iterate . applyRule
 
-diversity :: Grid -> Int
-diversity = sum . map biodiversity . S.toList
+
+diversity :: Tiles -> Int
+diversity = sum . S.map biodiversity
   where biodiversity (_, (x, y)) = 2 ^ (x + y * size)
 
 main :: IO ()
 main = do
   let input = flatten $ lines input1
-  let bugs  = S.fromList [ (0, p) | (p, '#') <- input ]
+  let tiles  = S.fromList [ (0, p) | (p, '#') <- input ]
 
   putStr "Part 1: "
-  print $ firstDuplicate $ diversity <$> iterate (applyRule neighbours) bugs
+  print $ firstDuplicate $ diversity <$> steps neighbours tiles
 
   putStr "Part 2: "
-  print $ length $ iterate (applyRule recursiveNeighbours) bugs !! 200
+  print $ length $ steps recursiveNeighbours tiles !! 200
 
 
 input1 :: String
