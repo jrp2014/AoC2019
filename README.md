@@ -8,5 +8,6 @@ Borrowing ideas from (in no particular order):
 * https://github.com/mgkoning/advent-of-code-2019
 * https://github.com/ephemient/aoc2019
 * https://github.com/neilparikh/advent-of-code2019
+* https://git.monade.li/aoc/tree/src
 
 ... and no doubt others.  Thanks for the education guys.
