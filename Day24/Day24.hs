@@ -21,7 +21,7 @@ import           Data.Functor.Rep               ( Representable(..)
 import qualified Data.Set                      as Set
 import qualified Data.Vector                   as V
 
-import Test.Hspec
+import           Test.Hspec
 
 
 -- from https://chrispenner.ca/posts/conways-game-of-life
@@ -34,36 +34,82 @@ newtype VBounded a = VBounded (V.Vector a)
 instance Distributive VBounded where
   distribute = distributeRep
 
-gridSize :: Int
-gridSize = 5
-
 instance Representable VBounded where
   type Rep VBounded = Int
   index (VBounded v) i = v V.! (i `mod` gridSize)
   tabulate desc = VBounded $ V.generate gridSize desc
 
 type Grid a = Store (Compose VBounded VBounded) a
-type Coord = (Int, Int)
+data Coord = C !Int !Int
 
-mkGrid :: [Coord] -> Grid Bool
-mkGrid xs = store lookup (0, 0) where lookup crd = crd `elem` xs
+gridSize :: Int
+gridSize = 5
+
+middle :: Coord
+middle = C (gridSize `div` 2) (gridSize `div` 2)
+
+inside :: Coord -> Bool
+inside (C x y) = 0 <= x && 0 <= y && x < gridSize && y < gridSize
+
+addCoord :: Coord -> Coord -> Coord
+addCoord (C x y) (C x' y') = C (x + x') (y + y')
+
+class    Neighbours a     where adjacents :: a -> [a]
+
+instance Neighbours Coord where
+  adjacents s = filter inside $ addCoord s <$> neighbourCoord
+
+   where
+    -- Offsets for the neighbouring 8 tiles, avoiding (0, 0) which is the cell itself
+    neighbourCoord :: [Coord]
+    neighbourCoord = [(C (-1) 0), (C 1 0), (C 0 (-1)), (C 0 1)]
+
+instance Neighbours C3    where
+  adjacents = cardinal3
+
+-----------------------------------------------------------------------
+-- 3-dimensional recursive board coordinates
+------------------------------------------------------------------------
+
+data C3 = C3 !Int !Int !Int
+  deriving (Eq, Ord, Show)
+
+to3 :: Coord -> C3
+to3 (C y x) = C3 0 y x
+
+cardinal3, left3, right3, above3, below3 :: C3 -> [C3]
+
+cardinal3 c = concat [left3 c, right3 c, above3 c, below3 c]
+
+left3 (C3 d y x) | x == 0         = [C3 (d - 1) 2 1]
+                 | x == 3, y == 2 = [ C3 (d + 1) i 4 | i <- [0 .. 4] ]
+                 | otherwise      = [C3 d y (x - 1)]
+
+right3 (C3 d y x) | x == 4         = [C3 (d - 1) 2 3]
+                  | x == 1, y == 2 = [ C3 (d + 1) i 0 | i <- [0 .. 4] ]
+                  | otherwise      = [C3 d y (x + 1)]
+
+below3 (C3 d y x) | y == 4         = [C3 (d - 1) 3 2]
+                  | y == 1, x == 2 = [ C3 (d + 1) 0 i | i <- [0 .. 4] ]
+                  | otherwise      = [C3 d (y + 1) x]
+
+above3 (C3 d y x) | y == 0         = [C3 (d - 1) 1 2]
+                  | y == 3, x == 2 = [ C3 (d + 1) 4 i | i <- [0 .. 4] ]
+                  | otherwise      = [C3 d (y - 1) x]
+
+
+--mkGrid :: [Coord] -> Grid Bool
+mkGrid xs = store lookup (0 0) where lookup crd = crd `elem` xs
 
 type Rule = Grid Bool -> Bool
 
--- Offsets for the neighbouring 8 tiles, avoiding (0, 0) which is the cell itself
-neighbourCoords :: [(Int, Int)]
-neighbourCoords = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
-
-part1Rule :: Rule
+part1Rule :: Neighbours a => Rule
 part1Rule g =
   (numNeighboursAlive == 1) || (not alive && numNeighboursAlive == 2)
  where
-  alive = extract g
-  addCoords (x, y) (x', y') = (x + x', y + y')
-  neighbours =
-    experiment (\s -> filter inside $ addCoords s <$> neighbourCoords) g
-  inside (x, y) = 0 <= x && 0 <= y && x < gridSize && y < gridSize
+  alive              = extract g
+  neighbours         = experiment adjacents g
   numNeighboursAlive = length (filter id neighbours)
 
 step :: Rule -> Grid Bool -> Grid Bool
@@ -85,11 +131,11 @@ coordLines :: [String] -> [(Coord, Char)]
 coordLines rows =
   [ ((y, x), z) | (y, row) <- zip [0 ..] rows, (x, z) <- zip [0 ..] row ]
 
-bugCoords :: [String] -> [Coord]
-bugCoords xs = [ k | (k, '#') <- coordLines xs ]
+bugCoord :: [String] -> [Coord]
+bugCoord xs = [ k | (k, '#') <- coordLines xs ]
 
 parse :: String -> Grid Bool
-parse = mkGrid . bugCoords . lines
+parse = mkGrid . bugCoord . lines
 
 
 diversity :: Grid Bool -> Int
