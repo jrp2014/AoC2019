@@ -16,17 +16,19 @@ explore :: Memory -> String -> String
 explore prog = map chr . execute prog . map ord
 
 play :: Memory -> [String] -> String
-play prog inputs = process $ map chr . execute prog . map ord $ unlines inputs
+play prog inputs = process $ explore prog $ unlines inputs
  where
-  process s =
-    if "Alert! Droids on this ship are heavier than the detected value"
-         `isInfixOf` s
-      then "-" -- too light
-      else
-        if "Alert! Droids on this ship are lighter than the detected value"
-             `isInfixOf` s
-          then "+" -- too heavy
-          else s
+  process s
+    | "Alert! Droids on this ship are heavier than the detected value"
+      `isInfixOf` s
+    = "-"
+    | -- too light
+      "Alert! Droids on this ship are lighter than the detected value"
+      `isInfixOf` s
+    = "+"
+    | -- too heavy
+      otherwise
+    = s
 
 
 main :: IO ()
@@ -36,42 +38,39 @@ main = do
   --interact $ explore pcode
   -- putStr $ play pcode getToCheckPoint
   mapM_ (putStr . play pcode) brute
-  -- putStr . head $ map (play pcode) brute
   print "Done"
 
 
 getToCheckPoint :: [String]
 getToCheckPoint =
   [ east
-    , take_ manifold
-    , south
-    , take_ peas
-    , north
-    , west
-    , south
-    , take_ heater
-    , south
-    , take_ matter
-    , north
-    , east
-    , north
-    , west
-    , south
-    , take_ antenna
-    , north
-    , east
-    , south
-    , east
-    , take_ rice
-    , north
-    , take_ bottle
-    , north
-    , take_ cat6
-    , west
-    , inv
-    ]
-    ++ map drop_ objects -- start with no inventory
-
+  , take_ manifold
+  , south
+  , take_ peas
+  , north
+  , west
+  , south
+  , take_ heater
+  , south
+  , take_ matter
+  , north
+  , east
+  , north
+  , west
+  , south
+  , take_ antenna
+  , north
+  , east
+  , south
+  , east
+  , take_ rice
+  , north
+  , take_ bottle
+  , north
+  , take_ cat6
+  , west
+  , inv
+  ]
 
 antenna, bottle, cat6, east, heater, inv, manifold, matter, north, peas, rice, south, west
   :: String
@@ -102,7 +101,10 @@ objects = [heater, antenna, peas, manifold, matter, cat6, rice, bottle]
 -- from scratch each time
 brute :: [[String]]
 brute =
-  map (\s -> getToCheckPoint ++ map take_ s ++ [inv, north]) $ powerset objects
+  map
+      (\s -> getToCheckPoint ++ map drop_ objects ++ map take_ s ++ [inv, north]
+      )
+    $ powerset objects
 
 powerset :: [a] -> [[a]]
 powerset = foldr (\x acc -> acc ++ map (x :) acc) [[]]
