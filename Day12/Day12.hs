@@ -43,12 +43,12 @@ solvePt1 s n = sum (map energy (transpose byDim))
     ke = sum $ map (abs . vel) m
 
 solvePt2 :: String -> Int
-solvePt2 s = foldl' lcm 1 repeatLengths
+solvePt2 s = foldl' lcm 1 periods
  where
   moons = parse s
 
-  repeatLengths :: [Int] -- by dimension
-  repeatLengths = map (repeatLength . iterate step) (transpose moons)
+  periods :: [Int] -- by dimension
+  periods = map (period . iterate step) (transpose moons)
 
 
 applyVelocity :: Dim -> Dim
@@ -56,20 +56,15 @@ applyVelocity (Dim x dx) = Dim (x + dx) dx
 
 -- | Apply gravity to the first particle based on the second.
 applyGravity :: Dim -> Dim -> Dim
-applyGravity (Dim x v) (Dim y _) = Dim x (v + g)
- where
-  g = case compare x y of
-    LT -> 1
-    GT -> -1
-    EQ -> 0
+applyGravity (Dim x v) (Dim y _) = Dim x (v + signum (y-x))
 
 -- | Single step of one-dimension
 step :: [Dim] -> [Dim]
 step ps = [ applyVelocity (foldl' applyGravity p ps) | p <- ps ]
 
-repeatLength :: Eq a => [a] -> Int
-repeatLength []       = error "repeatList: no cycle"
-repeatLength (x : xs) = 1 + n where Just n = elemIndex x xs
+period :: Eq a => [a] -> Int
+period []       = error "repeatList: no cycle"
+period (x : xs) = 1 + n where Just n = elemIndex x xs
 
 
 main :: IO ()
