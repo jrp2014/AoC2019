@@ -1,98 +1,65 @@
+{-# LANGUAGE RecordWildCards #-}
 module Day15 where
 
 
-import           Control.Arrow                  ( first
-                                                , second
-                                                )
-import qualified Data.Sequence                 as S
-import qualified Data.Map                      as Map
-import           Data.Maybe                     ( isNothing )
-import           Data.List                      ( nubBy )
+import qualified Data.Sequence                 as Seq
 
+import           Search
 
 import           IntCode
 
-type Coord = (Int, Int)
 
-data Tile = Free | Wall | Oxygen deriving (Show, Eq)
+-- glguy's solution, with my IntCode
+--
 
-type Grid = Map.Map Coord Tile
+type Coord = (Int, Int) -- row, column
 
-move :: Int -> Coord -> Coord
-move 1 = second pred
-move 2 = second succ
-move 3 = first pred
-move 4 = first succ
+north, south, east, west :: Coord -> Coord
+north (y, x) = (y - 1, x)
+south (y, x) = (y + 1, x)
+west (y, x) = (y, x - 1)
+east (y, x) = (y, x + 1)
 
-runRobotWithInput :: Memory -> [Int] -> (Grid, Coord)
-runRobotWithInput mem input =
-  let output = execute mem input
-      state  = scanl trackRobot (Map.fromList [((0, 0), Free)], (0, 0))
-        $ zip input output
+-- north (1), south (2), west (3), and east (4)
 
-      trackRobot :: (Grid, Coord) -> Coord -> (Grid, Coord)
-      trackRobot (m, oldPos) (inp, outp) =
-          let newPos =
-                  let (x, y) = oldPos
-                  in  case inp of -- only used if move was successful
-                        1 -> (x, y + 1) -- north
-                        2 -> (x, y - 1) -- south
-                        3 -> (x - 1, y) -- west
-                        4 -> (x + 1, y) -- east
-          in  case outp of
-                0 -> (Map.insert newPos Wall m, oldPos)
-                1 -> (Map.insert newPos Free m, newPos)
-                2 -> (Map.insert newPos Oxygen m, newPos)
-  in  last . map snd $ zip input (tail state)
+origin :: Coord
+origin = (0, 0)
 
 
-explore :: Memory -> [Grid]
-explore mem =
-  let
-    neighbours :: Coord -> [Coord]
-    neighbours (x, y) = [(x, y + 1), (x, y - 1), (x + 1, y), (x - 1, y)]
 
-    unmappedNeighbours :: Grid -> Coord -> [Coord]
-    unmappedNeighbours m pos = filter (`Map.notMember` m) $ neighbours pos
+data SearchState = SearchState
+  { onOxygen :: !Bool  -- ^ Is the robot currently on the oxygen
+  , distance :: !Int   -- ^ Commands issued so far
+  , location :: !Coord -- ^ robot's current location
+  , machine  :: Machine -- ^ robot control program state
+  } deriving (Eq, Ord, Show)
 
-    explore' :: (Grid, [([Int], Coord)]) -> (Grid, [([Int], Coord)])
-    explore' (m, pathsAndEndpoints) =
-      let
-        -- Find paths which end in a position that has unmapped neighbours,
-        -- then create forked paths from there.
-        pathsToExplore :: [[Int]]
-        pathsToExplore =
-          map fst
-            . filter (\(p, pos) -> not . null $ unmappedNeighbours m pos)
-            $ pathsAndEndpoints
-        newPaths :: [[Int]]
-        newPaths =
-          concatMap (\p -> map (\x -> p ++ [x]) [1 .. 4]) pathsToExplore
+-- | Initial search state starting from assumed non-oxygen at the origin.
+newSearchState
+  :: Memory {- ^ intcode -}
+  -> SearchState
+newSearchState prog = SearchState False 0 origin (mkMachine 0 prog)
 
-        -- Run the robot along the new paths, note the new map information and endpoints
-        (newMaps, newEndpoints) =
-          unzip . map (runRobotWithInput mem) $ newPaths
+-- | Breadth-first exploration of the maze
+explore :: SearchState -> [SearchState]
+explore = bfsOn location singleStep
 
-        -- Update the map with all new information
-        newMap :: Grid
-        newMap = foldr Map.union m newMaps
-
-        -- Join paths and their endpoints, cull paths that end in the same endpoint
-        newPathsAndEndpoints :: [([Int], Coord)]
-        newPathsAndEndpoints =
-          nubBy (\(_, pos1) (_, pos2) -> pos1 == pos2)
-            $ zip newPaths newEndpoints
-      in
-        (newMap, newPathsAndEndpoints)
-  in
-    map fst . tail . iterate explore' $ (Map.empty, [([], (0, 0))])
-
+-- | Generate the list of single steps that can be taken from a particular position.
+singleStep :: SearchState -> [SearchState]
+singleStep SearchState {..} =
+  [ SearchState (o == 2) (distance + 1) (move location) m'
+  | (i, move) <- [(1, north), (2, south), (3, west), (4, east)]
+  , let m' = run machine { input = i }
+  , let o  = output m'
+  , o > 0
+  ] -- (0 = wall)
 
 main :: IO ()
 main = do
   input <- readFile "input.txt"
-  let mem = S.fromList $ read $ '[' : input ++ "]"
-  --mapM_ (putStrLn . (++"\n\n") . mapToString) $ explore mem
-  (print . (+ 1) . length)
-    . takeWhile (\m -> Oxygen `notElem` Map.elems m)
-    $ explore mem
+  let mem = Seq.fromList $ read $ '[' : input ++ "]"
+  putStr "Part 1: "
+  let [part1] = filter onOxygen $ explore (newSearchState mem)
+  print $ distance part1
+  putStr "Part 2: "
+  print (distance (last (explore part1 { distance = 0 })))

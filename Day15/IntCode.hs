@@ -5,23 +5,26 @@ import qualified Data.Sequence                 as S
 
 type Memory = S.Seq Int
 
+
 data Machine
   = Machine
       { pc :: Int, -- program counter
         memory :: Memory,
-        input :: [Int],
+        input :: Int,
+        output :: Int,
         relBase :: Int
-      }
+      } deriving (Show, Eq, Ord)
 
-mkMachine :: [Int] -> Memory -> Machine
+mkMachine :: Int -> Memory -> Machine
 mkMachine inp mem = Machine { pc      = 0
                             , memory  = mem S.>< S.replicate 4096 0
                             , input   = inp
+                            , output = 0
                             , relBase = 0
                             }
 
-run :: Machine -> [Int]
-run m@(Machine counter mem inp relB) = case opcode of
+run :: Machine -> Machine
+run m@(Machine counter mem inp _ relB) = case opcode of
   -- (+)
   1 -> run m { pc = counter + 4, memory = setP 3 (getP 1 + getP 2) mem }
 
@@ -29,17 +32,13 @@ run m@(Machine counter mem inp relB) = case opcode of
   2 -> run m { pc = counter + 4, memory = setP 3 (getP 1 * getP 2) mem }
 
   -- input
-  3 -> if null inp
-    then []
-    else run m { pc     = counter + 2
-               , memory = setP 1 (head inp) mem
-               , input  = tail inp
+  3 -> run m { pc     = counter + 2
+               , memory = setP 1 inp mem
                }
 
   -- output
-  4 -> -- produces output in reverse order, which seems to give the right
-       -- laziness characteristics for Day 13
-    getP 1 : run m { pc = counter + 2 }
+  4 -> -- produces a single int as output
+    m { pc = counter + 2, output = getP 1 }
 
   -- Jump if true
   5 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 == 0) }
@@ -60,7 +59,7 @@ run m@(Machine counter mem inp relB) = case opcode of
   9  -> run m { pc = counter + 2, relBase = relB + getP 1 }
 
   -- halt
-  99 -> []
+  99 -> m
 
   o  -> error ("Invalid opcode " ++ show o ++ " at " ++ show counter)
  where
@@ -110,7 +109,5 @@ run m@(Machine counter mem inp relB) = case opcode of
     digit :: Int -> Int -> Int
     digit pos n = n `div` (10 ^ pos) `mod` 10
 
-execute :: Memory -> [Int] -> [Int]
-execute mem inputs = run $ mkMachine inputs mem
 
 
