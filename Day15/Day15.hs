@@ -2,15 +2,16 @@
 module Day15 where
 
 
+import           Data.Sequence                  ( Seq(..) )
 import qualified Data.Sequence                 as Seq
+import qualified Data.Set                      as S
 
-import           Search
 
 import           IntCode
 
 
--- glguy's solution, with my IntCode
---
+-- glguy's solution, with my IntCode and Naïm Favier's bfs
+
 
 type Coord = (Int, Int) -- row, column
 
@@ -25,6 +26,16 @@ east (y, x) = (y, x + 1)
 origin :: Coord
 origin = (0, 0)
 
+bfs :: Ord a => (a -> [a]) -> a -> [a]
+bfs = bfsOn id
+
+bfsOn :: Ord b => (a -> b) -> (a -> [a]) -> a -> [a]
+bfsOn rep next start = go S.empty (Seq.singleton start) where
+  go _ Empty = []
+  go seen (n :<| ps)
+    | r `S.member` seen = go seen ps
+    | otherwise         = n : go (S.insert r seen) (ps <> Seq.fromList (next n))
+    where r = rep n
 
 
 data SearchState = SearchState
