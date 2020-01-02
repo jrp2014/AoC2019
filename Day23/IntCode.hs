@@ -9,52 +9,59 @@ data Machine
   = Machine
       { pc      :: Int, -- program counter
         memory  :: Memory,
+        input :: [Int],
+        output :: [Int],
         relBase :: Int
-      }
+      } 
 
-mkMachine :: Memory -> Machine
-mkMachine mem =
-  Machine { pc = 0, memory = mem S.>< S.replicate 4096 0, relBase = 0 }
+instance Show (Machine) where
+  show m = "in " ++ show (input m) ++ " out = " ++ show (output m)
 
-run :: Machine -> [Int] -> [Int]
-run m@(Machine counter mem relB) inp = case opcode of
+mkMachine :: Memory -> [Int] -> Machine
+mkMachine mem inp = Machine { pc      = 0
+                            , memory  = mem S.>< S.replicate 4096 0
+                            , input   = inp
+                            , output  = []
+                            , relBase = 0
+                            }
+
+run :: Machine -> Machine
+run m@(Machine counter mem inp outp relB) = case opcode of
   -- (+)
-  1 -> run m { pc = counter + 4, memory = setP 3 (getP 1 + getP 2) mem } inp
+  1 -> run m { pc = counter + 4, memory = setP 3 (getP 1 + getP 2) mem }
 
   -- (*)
-  2 -> run m { pc = counter + 4, memory = setP 3 (getP 1 * getP 2) mem } inp
+  2 -> run m { pc = counter + 4, memory = setP 3 (getP 1 * getP 2) mem }
 
   -- input
-  3 -> if null inp
-    then []
-    else run m { pc = counter + 2, memory = setP 1 (head inp) mem } (tail inp)
+  3 -> if null inp then m else
+    run m { pc = counter + 2, memory = setP 1 (head inp) mem, input = tail inp }
 
   -- output
   4 -> -- produces output in reverse order, which seems to give the right
        -- laziness characteristics for Day 13
-    getP 1 : run m { pc = counter + 2 } inp
+    run m { pc = counter + 2, output =   outp ++ [getP 1] }
 
   -- Jump if true
-  5 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 == 0) } inp
+  5 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 == 0) }
 
   -- Jump if false
-  6 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 /= 0) } inp
+  6 -> run m { pc = bool (getP 2) (counter + 3) (getP 1 /= 0) }
 
   -- less than
-  7 -> run
-    m { pc = counter + 4, memory = setP 3 (bool 0 1 (getP 1 < getP 2)) mem }
-    inp
+  7 ->
+    run m { pc = counter + 4, memory = setP 3 (bool 0 1 (getP 1 < getP 2)) mem }
 
   -- equals
-  8 -> run
-    m { pc = counter + 4, memory = setP 3 (bool 0 1 (getP 1 == getP 2)) mem }
-    inp
+  8 -> run m { pc     = counter + 4
+             , memory = setP 3 (bool 0 1 (getP 1 == getP 2)) mem
+             }
 
   -- adjust relative base
-  9  -> run m { pc = counter + 2, relBase = relB + getP 1 } inp
+  9  -> run m { pc = counter + 2, relBase = relB + getP 1 }
 
   -- halt
-  99 -> []
+  99 -> m
 
   o  -> error ("Invalid opcode " ++ show o ++ " at " ++ show counter)
  where
@@ -105,6 +112,4 @@ run m@(Machine counter mem relB) inp = case opcode of
     digit pos n = n `div` (10 ^ pos) `mod` 10
 
 execute :: Memory -> [Int] -> [Int]
-execute mem = run $ mkMachine mem
-
-
+execute mem inp = output . run $ mkMachine mem inp
