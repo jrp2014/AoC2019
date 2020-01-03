@@ -14,9 +14,6 @@ data Machine
         relBase :: Int
       } 
 
-instance Show (Machine) where
-  show m = "in " ++ show (input m) ++ " out = " ++ show (output m)
-
 mkMachine :: Memory -> [Int] -> Machine
 mkMachine mem inp = Machine { pc      = 0
                             , memory  = mem S.>< S.replicate 4096 0

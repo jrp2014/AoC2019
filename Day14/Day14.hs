@@ -67,8 +67,7 @@ parseReactions s = either (error . show) id $ parse recipeP "" s
 
 recipeP :: Parser Recipe
 recipeP = do
-  rs <- reactionP `sepEndBy1` endOfLine
-  return rs
+  reactionP `sepEndBy1` endOfLine
 
 reactionP :: Parser Reaction
 reactionP = do
