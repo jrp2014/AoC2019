@@ -5,6 +5,7 @@ import           Data.Char                      ( ord
                                                 , chr
                                                 )
 import           Data.List                      ( isInfixOf )
+import           Data.Either                    ( fromLeft )
 
 import           IntCode
 
@@ -15,20 +16,18 @@ parse s = S.fromList . read $ '[' : s ++ "]"
 explore :: Memory -> String -> String
 explore prog = map chr . execute prog . map ord
 
-play :: Memory -> [String] -> String
-play prog inputs = process $ explore prog $ unlines inputs
+play :: Memory -> [String] -> Either String String
+play prog = process . explore prog . unlines
  where
   process s
     | "Alert! Droids on this ship are heavier than the detected value"
       `isInfixOf` s
-    = "-"
-    | -- too light
-      "Alert! Droids on this ship are lighter than the detected value"
+    = Right "-"
+    | "Alert! Droids on this ship are lighter than the detected value"
       `isInfixOf` s
-    = "+"
-    | -- too heavy
-      otherwise
-    = s
+    = Right "+"
+    | otherwise
+    = Left s
 
 
 main :: IO ()
@@ -37,8 +36,9 @@ main = do
   let pcode = parse code
   --interact $ explore pcode
   -- putStr $ play pcode getToCheckPoint
-  mapM_ (putStr . play pcode) brute
-  print "Done"
+  putStr . fromLeft "No combination of objects gives suitable weight" $ traverse
+    (play pcode)
+    brute
 
 
 getToCheckPoint :: [String]
@@ -101,10 +101,7 @@ objects = [heater, antenna, peas, manifold, matter, cat6, rice, bottle]
 -- from scratch each time
 brute :: [[String]]
 brute =
-  map
-      (\s -> getToCheckPoint ++ map drop_ objects ++ map take_ s ++ [inv, north]
-      )
-    $ powerset objects
+  map (\s -> getToCheckPoint ++ map drop_ s ++ [inv, north]) $ powerset objects
 
 powerset :: [a] -> [[a]]
 powerset = foldr (\x acc -> acc ++ map (x :) acc) [[]]
