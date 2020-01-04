@@ -1,19 +1,12 @@
 {-# LANGUAGE RecordWildCards #-}
 module Day23 where
 
-import           Control.Applicative            ( liftA
-                                                , liftA2
-                                                )
+import           Control.Arrow                  ( first )
+import qualified Data.Map                      as M
 import qualified Data.Sequence                 as Seq
 import qualified Data.Set                      as S
-import qualified Data.Map                      as M
-import           Control.Arrow                  ( first )
 
-import           Data.List.Split
 import           Data.List                      ( unfoldr )
-
-import           Debug.Trace
-
 
 import           IntCode
 
@@ -22,7 +15,7 @@ parse s = Seq.fromList . read $ '[' : s ++ "]"
 
 
 type Payload = (Int, Int)
-data Network = Network { computers :: M.Map Int Machine, nat :: Maybe Payload } deriving Show
+data Network = Network { computers :: M.Map Int Machine, nat :: Maybe Payload }
 
 
 getPayloads :: Machine -> ([(Int, [Int])], Machine)
@@ -50,7 +43,7 @@ step Network {..} =
   distributePayloads 0 m | isIdle, Just (x, y) <- nat' =
     run $ m { input = input m ++ [x, y] }
   distributePayloads a m =
-    run $ m { input = input m ++ (M.findWithDefault [-1] a packets) }
+    run $ m { input = input m ++ M.findWithDefault [-1] a packets }
 
   computers'' :: M.Map Int Machine
   computers'' = M.mapWithKey distributePayloads computers'
@@ -62,7 +55,7 @@ solvePt1 s = head nats
   network = Network
     (M.fromList [ (i, mkMachine (parse s) [i]) | i <- [0 .. 49] ])
     Nothing
-  nats = [ y | Just (x, y) <- unfoldr (Just . step) network ]
+  nats = [ y | Just (_, y) <- unfoldr (Just . step) network ]
 
 solvePt2 :: String -> Int
 solvePt2 s = firstDuplicate nats
@@ -70,7 +63,7 @@ solvePt2 s = firstDuplicate nats
   network = Network
     (M.fromList [ (i, mkMachine (parse s) [i]) | i <- [0 .. 49] ])
     Nothing
-  nats = [ y | Just (x, y) <- unfoldr (Just . step) network ]
+  nats = [ y | Just (_, y) <- unfoldr (Just . step) network ]
 
 findDuplicates :: Ord a => [a] -> [a]
 findDuplicates = go S.empty where
