@@ -103,6 +103,6 @@ brute :: [[String]]
 brute =
   map (\s -> getToCheckPoint ++ map drop_ s ++ [inv, north]) $ powerset objects
 
-powerset :: [a] -> [[a]]
+powerset :: [a] -> [[a]] -- seems to be faster than subsequences
 powerset = foldr (\x acc -> acc ++ map (x :) acc) [[]]
 
